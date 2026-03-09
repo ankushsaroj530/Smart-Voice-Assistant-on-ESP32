@@ -13,212 +13,311 @@
 const char* ssid = "Ankush";
 const char* password = "123456789";
 
-String GROQ_API_KEY = "Paste Your API Key";
+String GROQ_API_KEY = "Enter Your GROQ API Key";
+
 
 WebServer server(80);
 Audio audio;
-bool speaking = false;
+
+bool speaking=false;
+
 
 // -------------------
-// Webpage served by ESP32 (no browser TTS)
+// WEBPAGE
 // -------------------
+
 String webpage = R"====(
 <!DOCTYPE html>
-<html lang="en">
+<html>
+
 <head>
+
 <meta charset="UTF-8">
-<title>AI Voice Assistant</title>
+
+<title>NEXA AI Assistant</title>
+
 <style>
-body {
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:linear-gradient(135deg,#667eea,#764ba2);
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(135deg,#141e30,#243b55);
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+color:white;
 }
-#chatBox {
-  width:450px;
-  background:rgba(255,255,255,0.15);
-  backdrop-filter:blur(20px);
-  padding:30px;
-  border-radius:20px;
-  text-align:center;
-  box-shadow:0 8px 32px rgba(0,0,0,0.3);
+
+#box{
+width:420px;
+background:rgba(255,255,255,0.1);
+backdrop-filter:blur(20px);
+padding:30px;
+border-radius:20px;
+text-align:center;
 }
-#chatBox h2 {
-  margin:0 0 20px;
-  font-weight:600;
+
+#face{
+font-size:90px;
+margin-bottom:10px;
 }
-#chatBox button {
-  padding:12px 24px;
-  margin:10px;
-  border:none;
-  border-radius:50px;
-  cursor:pointer;
-  background:linear-gradient(135deg,#ff9a9e,#fad0c4);
-  color:#333;
-  font-weight:bold;
+
+button{
+padding:12px 25px;
+border:none;
+border-radius:50px;
+background:#00ffd5;
+cursor:pointer;
+font-weight:bold;
+font-size:16px;
 }
-#chatBox .answer {
-  margin-top:20px;
-  background:white;
-  color:#333;
-  padding:16px;
-  border-radius:10px;
-  min-height:40px;
-  font-size:16px;
+
+.answer{
+margin-top:20px;
+background:white;
+color:#333;
+padding:15px;
+border-radius:10px;
+min-height:40px;
 }
+
 </style>
+
 </head>
+
 <body>
 
-<div id="chatBox">
-  <h2>🎤 AI Voice Assistant</h2>
-  <button onclick="record()">Ask Question</button>
-  <div class="answer" id="answer">Hello! Please ask your question 😊</div>
+<div id="box">
+
+<div id="face">🙂</div>
+
+<h2>NEXA AI Assistant</h2>
+
+<button onclick="record()">🎤 Ask Question</button>
+
+<div class="answer" id="answer">
+Hello! I am Nexa created by Ankush. Press the microphone button and ask your question.
+</div>
+
 </div>
 
 <script>
-// -------------------
-// Voice Recognition
-// -------------------
-let recognition;
+
+let face=document.getElementById("face")
+let recognition
+
 function record(){
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SpeechRecognition){ alert("Speech Recognition not supported"); return; }
-  recognition = new SpeechRecognition();
-  recognition.lang="en-US";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  recognition.start();
 
-  recognition.onresult = function(event){
-    let question = event.results[0][0].transcript;
-    document.getElementById("answer").innerHTML = "You: " + question;
-    sendQuestion(question);
-  };
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 
-  recognition.onerror = function(event){
-    alert("Error: " + event.error);
-  };
+recognition=new SpeechRecognition()
+
+recognition.lang="en-US"
+
+face.innerHTML="👂"
+
+recognition.start()
+
+recognition.onresult=function(event){
+
+let q=event.results[0][0].transcript
+
+document.getElementById("answer").innerHTML="You: "+q
+
+sendQuestion(q)
+
 }
 
-// -------------------
-// Send question to ESP32
-// -------------------
+}
+
 function sendQuestion(q){
-  fetch("/ask?q="+encodeURIComponent(q))
-  .then(res => res.text())
-  .then(data => {
-    document.getElementById("answer").innerHTML = "AI: " + data;
-    // No browser speech synthesis here
-  });
+
+face.innerHTML="🤔"
+
+fetch("/ask?q="+encodeURIComponent(q))
+
+.then(res=>res.text())
+
+.then(data=>{
+
+face.innerHTML="🗣"
+
+document.getElementById("answer").innerHTML="NEXA: "+data
+
+setTimeout(()=>{
+
+face.innerHTML="🙂"
+
+},3000)
+
+})
+
 }
+
 </script>
 
 </body>
 </html>
 )====";
 
-// -------------------
-// ESP32 TTS using Google Translate
-// -------------------
-void speakESP32(String text) {
-  if(text.length()>180) text = text.substring(0,180);
-  text.replace("\n",""); text.replace(",",""); text.replace(".",""); 
-  text.replace("?",""); text.replace("!","");
-  text.replace(" ","%20");
-  String url = "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=" + text;
 
-  audio.setVolume(40); // max volume (0-40)
-  audio.connecttohost(url.c_str());
-  speaking = true;
+// -------------------
+// SPEAK FUNCTION
+// -------------------
+
+void speakESP32(String text){
+
+if(text.length()>180) text=text.substring(0,180);
+
+text.replace("\n","");
+text.replace(",","");
+text.replace(".","");
+text.replace("?","");
+text.replace("!","");
+text.replace(" ","%20");
+
+String url="https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q="+text;
+
+audio.setVolume(60);
+
+audio.connecttohost(url.c_str());
+
+speaking=true;
+
 }
 
+
 // -------------------
-// Send text to Groq API
+// GROQ AI
 // -------------------
+
 void askGroq(String question){
-  if(question.length()==0) return;
 
-  HTTPClient http;
-  http.begin("https://api.groq.com/openai/v1/chat/completions");
-  http.addHeader("Content-Type","application/json");
-  http.addHeader("Authorization","Bearer "+GROQ_API_KEY);
+HTTPClient http;
 
-  StaticJsonDocument<4096> doc;
-  doc["model"] = "llama-3.3-70b-versatile";
-  doc["max_tokens"] = 50;
+http.begin("https://api.groq.com/openai/v1/chat/completions");
 
-  JsonArray messages = doc.createNestedArray("messages");
-  JsonObject msg = messages.createNestedObject();
-  msg["role"] = "user";
-  msg["content"] = question;
+http.addHeader("Content-Type","application/json");
+http.addHeader("Authorization","Bearer "+GROQ_API_KEY);
 
-  String body;
-  serializeJson(doc, body);
+StaticJsonDocument<4096> doc;
 
-  int httpCode = http.POST(body);
-  if(httpCode == 200){
-    String response = http.getString();
-    StaticJsonDocument<4096> resDoc;
-    DeserializationError err = deserializeJson(resDoc, response);
-    if(!err){
-      String answer = resDoc["choices"][0]["message"]["content"].as<String>();
-      Serial.println("Answer: " + answer);
-      answer += ". Please ask next question.";
-      speakESP32(answer);
-      server.send(200,"text/plain",answer);
-    } else {
-      Serial.println("JSON parse error");
-      speakESP32("Sorry, I could not parse the answer. Please ask next question.");
-      server.send(200,"text/plain","Error parsing response.");
-    }
-  } else {
-    Serial.println("HTTP Error: " + String(httpCode));
-    speakESP32("Sorry, I could not get an answer. Please ask next question.");
-    server.send(200,"text/plain","Error contacting Groq API.");
-  }
-  http.end();
+doc["model"]="llama-3.1-8b-instant";
+doc["max_tokens"]=60;
+doc["temperature"]=0.7;
+
+JsonArray messages=doc.createNestedArray("messages");
+
+JsonObject sys=messages.createNestedObject();
+sys["role"]="system";
+sys["content"]="You are NEXA, a friendly AI assistant created by Ankush. Reply short.";
+
+JsonObject msg=messages.createNestedObject();
+msg["role"]="user";
+msg["content"]=question;
+
+String body;
+serializeJson(doc,body);
+
+int httpCode=http.POST(body);
+
+if(httpCode==200){
+
+String response=http.getString();
+
+StaticJsonDocument<4096> resDoc;
+deserializeJson(resDoc,response);
+
+String answer=resDoc["choices"][0]["message"]["content"].as<String>();
+
+answer+=". Please ask your next question.";
+
+speakESP32(answer);
+
+server.send(200,"text/plain",answer);
+
 }
 
+else{
+
+String error="Sorry I could not answer.";
+
+speakESP32(error);
+
+server.send(200,"text/plain",error);
+
+}
+
+http.end();
+
+}
+
+
 // -------------------
-// Web Server Handlers
+// SERVER
 // -------------------
-void handleRoot(){ server.send(200,"text/html",webpage); }
+
+void handleRoot(){
+
+server.send(200,"text/html",webpage);
+
+}
+
 void handleAsk(){
-  String question = server.arg("q");
-  Serial.println("Question: " + question);
-  askGroq(question);
+
+String q=server.arg("q");
+
+askGroq(q);
+
 }
 
+
 // -------------------
-// Setup
+// SETUP
 // -------------------
-void setup() {
-  Serial.begin(115200);
-  WiFi.begin(ssid,password);
-  while(WiFi.status()!=WL_CONNECTED){ delay(500); Serial.print("."); }
-  Serial.println("\nWiFi connected: " + WiFi.localIP().toString());
 
-  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-  audio.setVolume(40); // max volume
+void setup(){
 
-  server.on("/", handleRoot);
-  server.on("/ask", handleAsk);
-  server.begin();
+Serial.begin(115200);
 
-  speakESP32("Hello, I am ready. Please ask your question.");
+WiFi.begin(ssid,password);
+
+while(WiFi.status()!=WL_CONNECTED){
+
+delay(500);
+Serial.print(".");
+
 }
 
+Serial.println("");
+Serial.println("WiFi Connected");
+
+audio.setPinout(I2S_BCLK,I2S_LRC,I2S_DOUT);
+
+audio.setVolume(60);
+
+server.on("/",handleRoot);
+server.on("/ask",handleAsk);
+
+server.begin();
+
+speakESP32("Hello I am Nexa created by Ankush. Press the microphone button and ask your question.");
+
+}
+
+
 // -------------------
-// Main Loop
+// LOOP
 // -------------------
-void loop() {
-  audio.loop();
-  server.handleClient();
-  if(speaking && !audio.isRunning()) speaking=false;
+
+void loop(){
+
+audio.loop();
+
+server.handleClient();
+
+if(speaking && !audio.isRunning())
+speaking=false;
+
 }
